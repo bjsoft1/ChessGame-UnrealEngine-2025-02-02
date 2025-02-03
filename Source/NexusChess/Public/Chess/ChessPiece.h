@@ -30,6 +30,7 @@ private:
 	//---------------------------
 	int32 _tileX = -1;
 	int32 _tileY = -1;
+	int32 _moveCount = -1;
 	//---------------------------
 	FVector _newLocation;
 	//---------------------------
@@ -46,6 +47,7 @@ public:
 	FORCEINLINE EChessPlayers GetPieceOwner() { return this->_pieceOwner; }
 	FORCEINLINE int32 GetTileX() { return this->_tileX; }
 	FORCEINLINE int32 GetTileY() { return this->_tileY; }
+	FORCEINLINE bool GetIsInitialMove() const { return this->_moveCount == 0; }
 #pragma endregion Public Function
 
 protected:

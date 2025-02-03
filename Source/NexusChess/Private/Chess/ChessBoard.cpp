@@ -74,6 +74,19 @@ void AChessBoard::SetClickTile(int32 x, int32 y)
                 this->_chessPieces.Remove(existingPiece);
                 existingPiece->Destroy(true);
             }
+
+            // If Pawn piece then we need to determine is able to bron?
+            if (oldSelectedPiece->GetPieceType() == EChessPieceTypes::Pawn)
+            {
+                if (oldSelectedPiece->GetPieceOwner() == EChessPlayers::White)
+                {
+                    if (y == 7) oldSelectedPiece->SetPieceType(EChessPieceTypes::Queen);
+                }
+                else if (oldSelectedPiece->GetPieceOwner() == EChessPlayers::Black)
+                {
+                    if (y == 0) oldSelectedPiece->SetPieceType(EChessPieceTypes::Queen);
+                }
+            }
             oldSelectedPiece->SetTileIndex(x, y);
         }
 
@@ -194,10 +207,14 @@ void AChessBoard::Tick(float deltaTime)
 #pragma endregion Protected Function
 
 #pragma region Private Function
+TArray<F2DPoint> AChessBoard::GetPosibleMoveIndexs(AChessPiece* piece)
+{
+    TArray<F2DPoint> positions;
+
+    return positions;
+}
 void AChessBoard::DetectHoveredTile()
 {
-    if (!this->_isHovering) return;
-
     APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
     if (!PlayerController) return;
 
@@ -260,18 +277,18 @@ AChessPiece* AChessBoard::SpawnChessPiece(EChessPlayers owner, EChessPieceTypes 
 #pragma region Events Function
 void AChessBoard::OnBeginMouseHover(UPrimitiveComponent* touchedComponent)
 {
-    this->_isHovering = true;
+    AActor::SetActorTickEnabled(true);
     //UE_LOG(LogTemp, Warning, TEXT("Yes:%d"), this->_isHovering);
 }
 void AChessBoard::OnEndMouseHover(UPrimitiveComponent* touchedComponent)
 {
-    this->_isHovering = false;
+    AActor::SetActorTickEnabled(false);
     this->_hoveredTileX = -1;
     this->_hoveredTileY = -1;
     //UE_LOG(LogTemp, Warning, TEXT("No:%d"), this->_isHovering);
 }
 void AChessBoard::OnMouseClick(UPrimitiveComponent* touchedComponent, FKey buttonPressed)
 {
-    if (this->_hoveredTileX >= 0 && this->_hoveredTileY >= 0) SetClickTile(this->_hoveredTileX, this->_hoveredTileY);
+    if (IsValidTileIndex(this->_hoveredTileX, this->_hoveredTileY)) SetClickTile(this->_hoveredTileX, this->_hoveredTileY);
 }
 #pragma endregion Events Function

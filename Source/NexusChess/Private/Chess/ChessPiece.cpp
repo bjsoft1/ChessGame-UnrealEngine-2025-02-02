@@ -24,6 +24,7 @@ void AChessPiece::SetPieceType(EChessPieceTypes type)
 }
 void AChessPiece::SetTileIndex(int32 x, int32 y)
 {
+	this->_moveCount++;
 	this->_newLocation = this->_chessBoard->GetTileWorldPosition(x, y, this);
 	this->_tileX = x;
 	this->_tileY = y;

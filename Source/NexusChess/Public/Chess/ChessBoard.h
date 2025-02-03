@@ -3,7 +3,12 @@
 #include "GameFramework/Actor.h"
 #include "ChessComponents.h"
 #include "ChessBoard.generated.h"
-
+struct F2DPoint
+{
+public:
+	int32 X;
+	int32 Y;
+};
 UCLASS()
 class NEXUSCHESS_API AChessBoard : public AActor
 {
@@ -42,7 +47,6 @@ private:
 
 	int32 _clickedTileX = -1;
 	int32 _clickedTileY = -1;
-	bool _isHovering = false;
 	TArray<class AChessPiece*> _chessPieces;
 	//----------------------------
 #pragma endregion Private Variables
@@ -56,6 +60,7 @@ public:
 	bool IsFriendPiece(AChessPiece* a, AChessPiece* b);
 	FORCEINLINE UMaterial* GetPieceMaterial(EChessPlayers player) { return player == EChessPlayers::White ? this->_pieceWhiteMaterial : this->_pieceBlackMaterial; };
 	FORCEINLINE void SetHoverTile(int32 x, int32 y) { this->_hoveredTileX = x; this->_hoveredTileY = y; }
+	FORCEINLINE bool IsValidTileIndex(int32 x, int32 y) { return x >= 0 && x <= 7 and y >= 0 && y <= 7; }
 #pragma endregion Public Function
 
 protected:
@@ -64,6 +69,7 @@ protected:
 
 private:
 #pragma region Private Function
+	TArray<F2DPoint> GetPosibleMoveIndexs(AChessPiece* piece);
 	void DetectHoveredTile();
 	AChessPiece* SpawnChessPiece(EChessPlayers owner, EChessPieceTypes type, int32 x, int32 y);
 #pragma endregion Private Function
