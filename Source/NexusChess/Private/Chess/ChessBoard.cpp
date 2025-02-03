@@ -1,4 +1,4 @@
-#include "Chess/ChessBoard.h"
+﻿#include "Chess/ChessBoard.h"
 #include "Chess/ChessPiece.h"
 
 #pragma region System Function
