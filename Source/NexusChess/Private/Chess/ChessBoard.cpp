@@ -49,6 +49,84 @@ UStaticMesh* AChessBoard::GetPieceMesh(EChessPieceTypes type)
     default: return this->_piecePawn;
     }
 }
+AChessPiece* AChessBoard::FindChessPiece(int32 x, int32 y)
+{
+    for (AChessPiece* piece : this->_chessPieces)
+    {
+        if (piece != nullptr && piece->GetTileX() == x && piece->GetTileY() == y) return piece;
+    }
+
+    return nullptr;
+}
+void AChessBoard::SetClickTile(int32 x, int32 y)
+{
+    AChessPiece* oldSelectedPiece = FindChessPiece(this->_clickedTileX, this->_clickedTileY);
+    this->_clickedTileX = x;
+    this->_clickedTileY = y;
+
+    if (oldSelectedPiece != nullptr)
+    {        
+        AChessPiece* existingPiece = FindChessPiece(x, y);
+        if (!IsFriendPiece(oldSelectedPiece, existingPiece))
+        {
+            if (existingPiece != nullptr)
+            {
+                this->_chessPieces.Remove(existingPiece);
+                existingPiece->Destroy(true);
+            }
+            oldSelectedPiece->SetTileIndex(x, y);
+        }
+
+        this->_clickedTileX = -1;
+        this->_clickedTileY = -1;
+    }
+
+    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, FString::Printf(TEXT("Clicked Tile: X=%d, Y=%d"), x, y));
+}
+FVector AChessBoard::GetTileWorldPosition(int32 x, int32 y, AChessPiece* piece)
+{
+    float divider = 2.0f;
+    EChessPieceTypes type = piece->GetPieceType();
+    switch (type)
+    {
+    case EChessPieceTypes::Rook:
+    case EChessPieceTypes::Knight:
+    case EChessPieceTypes::Bishop:
+        divider = 2.50f;
+        break;
+    case EChessPieceTypes::Queen:
+        divider = 2.70f;
+        break;
+    case EChessPieceTypes::King:
+        divider = 2.60f;
+        break;
+    default:
+        divider = 2.0f;
+        break;
+    }
+    // Get the bounds of the chess piece mesh
+    UStaticMeshComponent* chessPieceMesh = piece->GetMeshComponent();
+    FVector pieceBounds = chessPieceMesh->GetStaticMesh()->GetBounds().BoxExtent / divider;
+
+    FVector meshBounds = _chessBoardMeshComponent->GetStaticMesh()->GetBounds().BoxExtent * 2.0f;
+    float boardSize = FMath::Max(meshBounds.X, meshBounds.Y);
+    float tileSize = boardSize / 8;
+
+    // Calculate the local position of the tile
+    FVector localTilePosition = FVector((x * tileSize) - boardSize / 2, (y * tileSize) - boardSize / 2, 0);
+    FVector adjustedLocalPosition = localTilePosition + FVector(pieceBounds.X / 2, pieceBounds.Y / 2, 0);
+
+    // Convert the local position to world space using the chessboard's transform
+    FVector worldTilePosition = _chessBoardMeshComponent->GetComponentTransform().TransformPosition(adjustedLocalPosition);
+
+    return worldTilePosition;
+}
+bool AChessBoard::IsFriendPiece(AChessPiece* a, AChessPiece* b)
+{
+    if (a == nullptr || b == nullptr) return false;
+
+    return a->GetPieceOwner() == b->GetPieceOwner();
+}
 #pragma endregion Public Function
 
 #pragma region Protected Function
@@ -57,6 +135,7 @@ void AChessBoard::BeginPlay()
     Super::BeginPlay();
     this->_chessBoardMeshComponent->OnBeginCursorOver.AddDynamic(this, &ThisClass::OnBeginMouseHover);
     this->_chessBoardMeshComponent->OnEndCursorOver.AddDynamic(this, &ThisClass::OnEndMouseHover);
+    this->_chessBoardMeshComponent->OnClicked.AddDynamic(this, &ThisClass::OnMouseClick);
 
     // Spawn Pawn Pices
     for (int i = 0; i < 8; i++)
@@ -148,7 +227,7 @@ void AChessBoard::DetectHoveredTile()
             _hoveredTileY = TileY;
 
             //UE_LOG(LogTemp, Warning, TEXT("Hovered Tile: X=%d, Y=%d"), _hoveredTileX, _hoveredTileY);
-            GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Hovered Tile: X=%d, Y=%d"), _hoveredTileX, _hoveredTileY));
+            //GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Hovered Tile: X=%d, Y=%d"), _hoveredTileX, _hoveredTileY));
             
             //TODO: Apply hover effect
             //UMaterialInstanceDynamic* DynamicMaterial = _chessBoardMeshComponent->CreateAndSetMaterialInstanceDynamic(0);
@@ -171,52 +250,13 @@ AChessPiece* AChessBoard::SpawnChessPiece(EChessPlayers owner, EChessPieceTypes 
         newPiece->SetChessBoard(this);
         newPiece->SetPieceOwner(owner);
         newPiece->SetPieceType(type);
-        newPiece->SetTileIndex(0, 0);
-        newPiece->SetActorRelativeLocation(GetTileWorldPosition(x, y, newPiece, type));
+        newPiece->SetTileIndex(x, y);
         this->_chessPieces.Add(newPiece);
 
         return newPiece;
     }
     return nullptr;
 }
-FVector AChessBoard::GetTileWorldPosition(int32 x, int32 y, AChessPiece* piece, EChessPieceTypes type)
-{
-    float divider = 2.0f;
-    switch (type)
-    {
-    case EChessPieceTypes::Rook:
-    case EChessPieceTypes::Knight:
-    case EChessPieceTypes::Bishop:
-        divider = 2.50f;
-        break;
-    case EChessPieceTypes::Queen:
-        divider = 2.70f;
-        break;
-    case EChessPieceTypes::King:
-        divider = 2.60f;
-        break;
-    default:
-        divider = 2.0f;
-        break;
-    }
-    // Get the bounds of the chess piece mesh
-    UStaticMeshComponent* chessPieceMesh = piece->GetMeshComponent();
-    FVector pieceBounds = chessPieceMesh->GetStaticMesh()->GetBounds().BoxExtent / divider;
-
-    FVector meshBounds = _chessBoardMeshComponent->GetStaticMesh()->GetBounds().BoxExtent * 2.0f;
-    float boardSize = FMath::Max(meshBounds.X, meshBounds.Y);
-    float tileSize = boardSize / 8;
-
-    // Calculate the local position of the tile
-    FVector localTilePosition = FVector((x * tileSize) - boardSize / 2, (y * tileSize) - boardSize / 2, 0);
-    FVector adjustedLocalPosition = localTilePosition + FVector(pieceBounds.X / 2, pieceBounds.Y / 2, 0);
-
-    // Convert the local position to world space using the chessboard's transform
-    FVector worldTilePosition = _chessBoardMeshComponent->GetComponentTransform().TransformPosition(adjustedLocalPosition);
-
-    return worldTilePosition;
-}
-
 #pragma region Events Function
 void AChessBoard::OnBeginMouseHover(UPrimitiveComponent* touchedComponent)
 {
@@ -226,6 +266,12 @@ void AChessBoard::OnBeginMouseHover(UPrimitiveComponent* touchedComponent)
 void AChessBoard::OnEndMouseHover(UPrimitiveComponent* touchedComponent)
 {
     this->_isHovering = false;
+    this->_hoveredTileX = -1;
+    this->_hoveredTileY = -1;
     //UE_LOG(LogTemp, Warning, TEXT("No:%d"), this->_isHovering);
+}
+void AChessBoard::OnMouseClick(UPrimitiveComponent* touchedComponent, FKey buttonPressed)
+{
+    if (this->_hoveredTileX >= 0 && this->_hoveredTileY >= 0) SetClickTile(this->_hoveredTileX, this->_hoveredTileY);
 }
 #pragma endregion Events Function
