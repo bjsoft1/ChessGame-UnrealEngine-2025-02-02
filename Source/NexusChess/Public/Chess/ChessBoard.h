@@ -6,6 +6,11 @@
 struct F2DPoint
 {
 public:
+	F2DPoint(int32 x, int32 y)
+	{
+		X = x;
+		Y = y;
+	}
 	int32 X;
 	int32 Y;
 };
@@ -61,6 +66,8 @@ public:
 	FORCEINLINE UMaterial* GetPieceMaterial(EChessPlayers player) { return player == EChessPlayers::White ? this->_pieceWhiteMaterial : this->_pieceBlackMaterial; };
 	FORCEINLINE void SetHoverTile(int32 x, int32 y) { this->_hoveredTileX = x; this->_hoveredTileY = y; }
 	FORCEINLINE bool IsValidTileIndex(int32 x, int32 y) { return x >= 0 && x <= 7 and y >= 0 && y <= 7; }
+	FORCEINLINE bool IsPosibleMove(int32 x, int32 y, const TArray<F2DPoint>& locations) { return locations.ContainsByPredicate([x, y](const F2DPoint& point) { return point.X == x && point.Y == y; }); }
+
 #pragma endregion Public Function
 
 protected:

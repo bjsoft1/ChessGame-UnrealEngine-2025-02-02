@@ -69,6 +69,9 @@ void AChessBoard::SetClickTile(int32 x, int32 y)
         AChessPiece* existingPiece = FindChessPiece(x, y);
         if (!IsFriendPiece(oldSelectedPiece, existingPiece))
         {
+            const TArray<F2DPoint> locations = GetPosibleMoveIndexs(oldSelectedPiece);
+            if (!IsPosibleMove(x, y, locations)) return;
+
             if (existingPiece != nullptr)
             {
                 this->_chessPieces.Remove(existingPiece);
@@ -209,9 +212,79 @@ void AChessBoard::Tick(float deltaTime)
 #pragma region Private Function
 TArray<F2DPoint> AChessBoard::GetPosibleMoveIndexs(AChessPiece* piece)
 {
-    TArray<F2DPoint> positions;
+    TArray<F2DPoint> _;
+    if (piece == nullptr) return _;
 
-    return positions;
+    const EChessPieceTypes type = piece->GetPieceType();
+    const int32 x = piece->GetTileX();
+    const int32 y = piece->GetTileY();
+    const EChessPlayers owner = piece->GetPieceOwner();
+
+    switch (type)
+    {
+    case EChessPieceTypes::Rook:
+    {
+
+        break;
+    }
+    case EChessPieceTypes::Knight:
+    {
+
+        break;
+    }
+    case EChessPieceTypes::Bishop:
+    {
+
+        break;
+    }
+    case EChessPieceTypes::Queen:
+    {
+
+        break;
+    }
+    case EChessPieceTypes::King:
+    {
+
+        break;
+    }
+    default:
+    {
+        const int32 direction = owner == EChessPlayers::White ? 1 : -1;
+
+        int32 xx = x - 1;
+        int32 yy = y + 1 * direction;
+        // ForwardRight Y (Check Opponent Have?)
+        if (IsValidTileIndex(xx, yy))
+        {
+            const auto opponent = FindChessPiece(xx, yy);
+            if (opponent && !IsFriendPiece(piece, opponent)) _.Add(F2DPoint(xx, yy));
+        }
+
+        xx = x + 1;
+        yy = y + 1 * direction;
+        // ForwardLeft Y (Check Opponent Have?)
+        if (IsValidTileIndex(xx, yy))
+        {
+            const auto opponent = FindChessPiece(xx, yy);
+            if (opponent && !IsFriendPiece(piece, opponent)) _.Add(F2DPoint(xx, yy));
+        }
+        bool isPosible2 = true;
+        xx = x;
+        yy = y + 1 * direction;
+        // Forward (1 Step)
+        if (IsValidTileIndex(xx, yy) && FindChessPiece(xx, yy) == nullptr) _.Add(F2DPoint(xx, yy));
+        else isPosible2 = false;
+
+        xx = x;
+        yy = y + 2 * direction;
+
+        // Forward (2 Step)
+        if (isPosible2 && piece->GetIsInitialMove() && IsValidTileIndex(xx, yy) && FindChessPiece(xx, yy) == nullptr) _.Add(F2DPoint(xx, yy));
+
+        break;
+    }
+    }
+    return _;
 }
 void AChessBoard::DetectHoveredTile()
 {
