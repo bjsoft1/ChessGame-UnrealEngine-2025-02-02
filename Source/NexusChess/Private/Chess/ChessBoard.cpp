@@ -1,5 +1,6 @@
 ﻿#include "Chess/ChessBoard.h"
 #include "Chess/ChessPiece.h"
+#include "Chess/PawnPiece.h"
 
 #pragma region System Function
 AChessBoard::AChessBoard(const FObjectInitializer& objectInitializer) : Super(objectInitializer)
@@ -18,7 +19,7 @@ AChessBoard::AChessBoard(const FObjectInitializer& objectInitializer) : Super(ob
     ConstructorHelpers::FObjectFinder<UStaticMesh> pieceBishop(TEXT("/Game/Nexus-Contents/Static-Mesh/SM_Bishop"));
     ConstructorHelpers::FObjectFinder<UStaticMesh> pieceQueen(TEXT("/Game/Nexus-Contents/Static-Mesh/SM_Queen"));
     ConstructorHelpers::FObjectFinder<UStaticMesh> pieceKing(TEXT("/Game/Nexus-Contents/Static-Mesh/SM_King"));
-    
+
     ConstructorHelpers::FObjectFinder<UMaterial> black(TEXT("/Game/Nexus-Contents/Materials/M_Black"));
     ConstructorHelpers::FObjectFinder<UMaterial> white(TEXT("/Game/Nexus-Contents/Materials/M_White"));
 
@@ -65,7 +66,7 @@ void AChessBoard::SetClickTile(int32 x, int32 y)
     this->_clickedTileY = y;
 
     if (oldSelectedPiece != nullptr)
-    {        
+    {
         AChessPiece* existingPiece = FindChessPiece(x, y);
         if (!IsFriendPiece(oldSelectedPiece, existingPiece))
         {
@@ -74,6 +75,13 @@ void AChessBoard::SetClickTile(int32 x, int32 y)
 
             if (existingPiece != nullptr)
             {
+                // If pawn piece? then we need to determine IsEnpassantMoved?
+                if (oldSelectedPiece->GetPieceType() == EChessPieceTypes::Pawn && IsEnpassantMoved(y, oldSelectedPiece))
+                {
+                    const int32 direction = oldSelectedPiece->GetPieceOwner() == EChessPlayers::White ? 1 : -1;
+                    y = y + (1 * direction);
+                }
+
                 this->_chessPieces.Remove(existingPiece);
                 existingPiece->Destroy(true);
             }
@@ -91,6 +99,7 @@ void AChessBoard::SetClickTile(int32 x, int32 y)
                 }
             }
             oldSelectedPiece->SetTileIndex(x, y);
+            this->_lastMovedPiece = oldSelectedPiece;
         }
 
         this->_clickedTileX = -1;
@@ -156,49 +165,49 @@ void AChessBoard::BeginPlay()
     // Spawn Pawn Pices
     for (int i = 0; i < 8; i++)
     {
-        SpawnChessPiece(EChessPlayers::White, EChessPieceTypes::Pawn, i, 1);
-        SpawnChessPiece(EChessPlayers::Black, EChessPieceTypes::Pawn, i, 6);
+        SpawnChessPiece<APawnPiece>(EChessPlayers::White, EChessPieceTypes::Pawn, i, 1);
+        SpawnChessPiece<APawnPiece>(EChessPlayers::Black, EChessPieceTypes::Pawn, i, 6);
     }
 
     //-------------------------------
     //Spawn Rooks
     //-------------------------------
-    SpawnChessPiece(EChessPlayers::White, EChessPieceTypes::Rook, 0, 0);
-    SpawnChessPiece(EChessPlayers::White, EChessPieceTypes::Rook, 7, 0);
-    SpawnChessPiece(EChessPlayers::Black, EChessPieceTypes::Rook, 0, 7);
-    SpawnChessPiece(EChessPlayers::Black, EChessPieceTypes::Rook, 7, 7);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::White, EChessPieceTypes::Rook, 0, 0);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::White, EChessPieceTypes::Rook, 7, 0);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::Black, EChessPieceTypes::Rook, 0, 7);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::Black, EChessPieceTypes::Rook, 7, 7);
     //-------------------------------
 
     //-------------------------------
     //Spawn Rooks
     //-------------------------------
-    SpawnChessPiece(EChessPlayers::White, EChessPieceTypes::Knight, 1, 0);
-    SpawnChessPiece(EChessPlayers::White, EChessPieceTypes::Knight, 6, 0);
-    SpawnChessPiece(EChessPlayers::Black, EChessPieceTypes::Knight, 1, 7);
-    SpawnChessPiece(EChessPlayers::Black, EChessPieceTypes::Knight, 6, 7);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::White, EChessPieceTypes::Knight, 1, 0);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::White, EChessPieceTypes::Knight, 6, 0);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::Black, EChessPieceTypes::Knight, 1, 7);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::Black, EChessPieceTypes::Knight, 6, 7);
     //-------------------------------
 
     //-------------------------------
     //Spawn Bishop
     //-------------------------------
-    SpawnChessPiece(EChessPlayers::White, EChessPieceTypes::Bishop, 2, 0);
-    SpawnChessPiece(EChessPlayers::White, EChessPieceTypes::Bishop, 5, 0);
-    SpawnChessPiece(EChessPlayers::Black, EChessPieceTypes::Bishop, 2, 7);
-    SpawnChessPiece(EChessPlayers::Black, EChessPieceTypes::Bishop, 5, 7);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::White, EChessPieceTypes::Bishop, 2, 0);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::White, EChessPieceTypes::Bishop, 5, 0);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::Black, EChessPieceTypes::Bishop, 2, 7);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::Black, EChessPieceTypes::Bishop, 5, 7);
     //-------------------------------
 
     //-------------------------------
     //Spawn Queen
     //-------------------------------
-    SpawnChessPiece(EChessPlayers::White, EChessPieceTypes::Queen, 4, 0);
-    SpawnChessPiece(EChessPlayers::Black, EChessPieceTypes::Queen, 4, 7);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::White, EChessPieceTypes::Queen, 4, 0);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::Black, EChessPieceTypes::Queen, 4, 7);
     //-------------------------------
 
     //-------------------------------
     //Spawn King
     //-------------------------------
-    SpawnChessPiece(EChessPlayers::White, EChessPieceTypes::King, 3, 0);
-    SpawnChessPiece(EChessPlayers::Black, EChessPieceTypes::King, 3, 7);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::White, EChessPieceTypes::King, 3, 0);
+    SpawnChessPiece<AChessPiece>(EChessPlayers::Black, EChessPieceTypes::King, 3, 7);
     //-------------------------------
 
 }
@@ -281,6 +290,16 @@ TArray<F2DPoint> AChessBoard::GetPosibleMoveIndexs(AChessPiece* piece)
         // Forward (2 Step)
         if (isPosible2 && piece->GetIsInitialMove() && IsValidTileIndex(xx, yy) && FindChessPiece(xx, yy) == nullptr) _.Add(F2DPoint(xx, yy));
 
+        xx = x + 1;
+        yy = y;
+        // Is Posible Left En-Passant?
+        if (IsPosibleEnpassant(xx, yy, piece)) _.Add(F2DPoint(xx, yy));
+
+        xx = x - 1;
+        yy = y;
+        // Is Posible Right En-Passant?
+        if (IsPosibleEnpassant(xx, yy, piece)) _.Add(F2DPoint(xx, yy));
+
         break;
     }
     }
@@ -318,7 +337,7 @@ void AChessBoard::DetectHoveredTile()
 
             //UE_LOG(LogTemp, Warning, TEXT("Hovered Tile: X=%d, Y=%d"), _hoveredTileX, _hoveredTileY);
             //GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, FString::Printf(TEXT("Hovered Tile: X=%d, Y=%d"), _hoveredTileX, _hoveredTileY));
-            
+
             //TODO: Apply hover effect
             //UMaterialInstanceDynamic* DynamicMaterial = _chessBoardMeshComponent->CreateAndSetMaterialInstanceDynamic(0);
             //if (DynamicMaterial)
@@ -330,22 +349,50 @@ void AChessBoard::DetectHoveredTile()
     }
 }
 #pragma endregion Private Function
-AChessPiece* AChessBoard::SpawnChessPiece(EChessPlayers owner, EChessPieceTypes type, int32 x, int32 y)
+template <typename T>
+T* AChessBoard::SpawnChessPiece(EChessPlayers owner, EChessPieceTypes type, int32 x, int32 y)
 {
+    static_assert(std::is_base_of<AChessPiece, T>::value, "T must be a subclass of AChessPiece");
+
     if (UWorld* world = GetWorld())
     {
         FActorSpawnParameters spawnParams;
         spawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-        AChessPiece* newPiece = world->SpawnActor<AChessPiece>(AChessPiece::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, spawnParams);
-        newPiece->SetChessBoard(this);
-        newPiece->SetPieceOwner(owner);
-        newPiece->SetPieceType(type);
-        newPiece->SetTileIndex(x, y);
-        this->_chessPieces.Add(newPiece);
+
+        T* newPiece = world->SpawnActor<T>(FVector::ZeroVector, FRotator::ZeroRotator, spawnParams);
+        if (newPiece)
+        {
+            newPiece->SetChessBoard(this);
+            newPiece->SetPieceOwner(owner);
+            newPiece->SetPieceType(type);
+            newPiece->SetTileIndex(x, y);
+            this->_chessPieces.Add(newPiece);
+        }
 
         return newPiece;
     }
     return nullptr;
+}
+
+bool AChessBoard::IsPosibleEnpassant(int32 x, int32 y, AChessPiece* piece)
+{
+    UE_LOG(LogTemp, Warning, TEXT("---------------------------------------------------------"));
+    if (IsValidTileIndex(x, y))
+    {
+        const auto opponent = FindChessPiece(x, y);
+
+        if (opponent != nullptr && opponent == this->_lastMovedPiece && !IsFriendPiece(piece, opponent))
+        {
+            APawnPiece* pawn = Cast<APawnPiece>(opponent);
+            if (pawn != nullptr && pawn->GetPosibleEnpassant()) return true;
+        }
+    }
+    UE_LOG(LogTemp, Warning, TEXT("---------------------------------------------------------"));
+    return false;
+}
+bool AChessBoard::IsEnpassantMoved(int32 y, AChessPiece* piece)
+{
+    return y == piece->GetTileY();
 }
 #pragma region Events Function
 void AChessBoard::OnBeginMouseHover(UPrimitiveComponent* touchedComponent)

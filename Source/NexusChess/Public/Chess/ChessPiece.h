@@ -42,12 +42,13 @@ public:
 	void SetPieceType(EChessPieceTypes type);
 	FORCEINLINE UStaticMeshComponent* GetMeshComponent() { return this->_chessPieceMeshComponent; }
 	FORCEINLINE void SetChessBoard(AChessBoard* chessBoard) { this->_chessBoard = chessBoard; };
-	void SetTileIndex(int32 x, int32 y);
+	virtual void SetTileIndex(int32 x, int32 y);
 	FORCEINLINE EChessPieceTypes GetPieceType() { return this->_pieceType; }
 	FORCEINLINE EChessPlayers GetPieceOwner() { return this->_pieceOwner; }
 	FORCEINLINE int32 GetTileX() { return this->_tileX; }
 	FORCEINLINE int32 GetTileY() { return this->_tileY; }
 	FORCEINLINE bool GetIsInitialMove() const { return this->_moveCount == 0; }
+	FORCEINLINE int32 GetMoveCount() const { return this->_moveCount; }
 #pragma endregion Public Function
 
 protected:

@@ -1,6 +1,6 @@
 #pragma once
 
-
+UENUM()
 enum class EChessPlayers : uint8
 {
 	/// <summary>
@@ -18,7 +18,7 @@ enum class EChessPlayers : uint8
 	/// </summary>
 	White = 2
 };
-
+UENUM()
 enum class EChessPieceTypes : uint8
 {
     /// <summary>

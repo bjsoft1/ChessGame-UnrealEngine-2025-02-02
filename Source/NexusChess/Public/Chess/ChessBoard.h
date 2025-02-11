@@ -53,6 +53,7 @@ private:
 	int32 _clickedTileX = -1;
 	int32 _clickedTileY = -1;
 	TArray<class AChessPiece*> _chessPieces;
+	AChessPiece* _lastMovedPiece = nullptr;
 	//----------------------------
 #pragma endregion Private Variables
 
@@ -78,7 +79,10 @@ private:
 #pragma region Private Function
 	TArray<F2DPoint> GetPosibleMoveIndexs(AChessPiece* piece);
 	void DetectHoveredTile();
-	AChessPiece* SpawnChessPiece(EChessPlayers owner, EChessPieceTypes type, int32 x, int32 y);
+	template <typename T>
+	T* SpawnChessPiece(EChessPlayers owner, EChessPieceTypes type, int32 x, int32 y);
+	bool IsPosibleEnpassant(int32 x, int32 y, AChessPiece* piece);
+ 	FORCEINLINE bool IsEnpassantMoved(int32 y, AChessPiece* piece);
 #pragma endregion Private Function
 
 #pragma region Events Function
