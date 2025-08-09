@@ -30,6 +30,9 @@ ALudoDice::ALudoDice(const FObjectInitializer& objectInitializer) : Super(object
 	DiceMeshComponent->SetEnableGravity(true);
 	DiceMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	DiceMeshComponent->SetCollisionObjectType(ECollisionChannel::ECC_PhysicsBody);
+	
+	// Enable physics replication
+	DiceMeshComponent->SetIsReplicated(true);
 }
 
 void ALudoDice::BeginPlay()
@@ -208,6 +211,10 @@ void ALudoDice::Server_ThrowDice_Implementation()
 	SetActorLocation(OriginalLocation);
 	SetActorRotation(OriginalRotation);
 	
+	// Stop any existing physics
+	DiceMeshComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
+	DiceMeshComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+	
 	// Apply random force for throwing
 	FVector ThrowDirection = FVector(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), 1.0f);
 	ThrowDirection.Normalize();
@@ -222,6 +229,9 @@ void ALudoDice::Server_ThrowDice_Implementation()
 	
 	// Set timer for throw completion
 	GetWorld()->GetTimerManager().SetTimer(ThrowTimerHandle, this, &ALudoDice::OnThrowComplete, ThrowDuration, false);
+	
+	// Notify all clients about the throw
+	Client_OnDiceThrown();
 	
 	// Print debug message
 	GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Blue, TEXT("Dice Thrown!"));
@@ -238,6 +248,13 @@ void ALudoDice::Server_SetDiceValue_Implementation(int32 NewValue)
 	UE_LOG(LogTemp, Warning, TEXT("Server: Dice Value = %d"), CurrentDiceValue);
 }
 
+void ALudoDice::Client_OnDiceThrown_Implementation()
+{
+	// Client-side dice throw notification
+	GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Purple, TEXT("Dice is Rolling!"));
+	UE_LOG(LogTemp, Warning, TEXT("Client: Dice Thrown Animation"));
+}
+
 void ALudoDice::Client_OnThrowComplete_Implementation()
 {
 	// Client-side throw completion
@@ -250,7 +267,7 @@ void ALudoDice::Client_OnThrowComplete_Implementation()
 void ALudoDice::OnRep_DiceValueChanged()
 {
 	// Called when dice value is replicated to clients
-	FString DebugMessage = FString::Printf(TEXT("Dice Value Changed to: %d"), CurrentDiceValue);
+	FString DebugMessage = FString::Printf(TEXT("Dice Value Replicated: %d"), CurrentDiceValue);
 	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, DebugMessage);
 	UE_LOG(LogTemp, Warning, TEXT("Dice Value Replicated: %d"), CurrentDiceValue);
 }

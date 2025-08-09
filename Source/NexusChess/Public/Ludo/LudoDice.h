@@ -108,6 +108,10 @@ private:
 	// Client function to handle throw completion
 	UFUNCTION(Client, Reliable)
 	void Client_OnThrowComplete();
+
+	// Client function to handle dice thrown animation
+	UFUNCTION(Client, Reliable)
+	void Client_OnDiceThrown();
 #pragma endregion Private Function
 
 #pragma region Events Function
