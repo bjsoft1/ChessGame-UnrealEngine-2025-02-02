@@ -1,21 +1,16 @@
 #include "Players/LudoPawn.h"
-//---------------------------------------
-
-#pragma region System Function
+#include "Engine/Engine.h"
 
 ALudoPawn::ALudoPawn(const FObjectInitializer& objectInitializer) : Super(objectInitializer)
 {
+	PrimaryActorTick.bCanEverTick = true;
 }
-#pragma endregion System Function
 
-#pragma region Public Function
-#pragma endregion Public Function
+void ALudoPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	if (!PlayerInputComponent) return;
 
-#pragma region Protected Function
-#pragma endregion Protected Function
-
-#pragma region Private Function
-#pragma endregion Private Function
-
-#pragma region Events Function
-#pragma endregion Events Function
+	// Note: Dice throwing is now handled by ALudoController
+	// This pawn can be used for movement and other player-specific actions
+}
