@@ -1,9 +1,9 @@
-#include "Players/ChessPawn.h"
+#include "Players/LudoPawn.h"
 //---------------------------------------
 
 #pragma region System Function
 
-AChessPawn::AChessPawn(const FObjectInitializer& objectInitializer) : Super(objectInitializer)
+ALudoPawn::ALudoPawn(const FObjectInitializer& objectInitializer) : Super(objectInitializer)
 {
 }
 #pragma endregion System Function

@@ -1,15 +1,15 @@
 #pragma once
 #include "NexusPawn.h"
-#include "ChessPawn.generated.h"
+#include "LudoPawn.generated.h"
 
 UCLASS()
-class NEXUSCHESS_API AChessPawn : public ANexusPawn
+class NEXUSCHESS_API ALudoPawn : public ANexusPawn
 {
 	GENERATED_BODY()
 
 public:
 #pragma region System Function
-	AChessPawn(const FObjectInitializer& objectInitializer);
+	ALudoPawn(const FObjectInitializer& objectInitializer);
 #pragma endregion System Function
 
 #pragma region Public Variables
