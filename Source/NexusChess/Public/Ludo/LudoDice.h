@@ -31,18 +31,7 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
 	bool bHasFinishedThrowing = false;
 
-	// Deterministic physics parameters (replicated to all clients)
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
-	FVector ReplicatedThrowDirection = FVector::ZeroVector;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
-	FVector ReplicatedAngularImpulse = FVector::ZeroVector;
-
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
-	float ReplicatedThrowForce = 0.0f;
-
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
-	float ReplicatedRotationForce = 0.0f;
 #pragma endregion Public Variables
 
 protected:
@@ -77,6 +66,10 @@ private:
 	// Original location for reset
 	FVector OriginalLocation;
 	FRotator OriginalRotation;
+	
+	// Server's final result for syncing
+	FVector ServerFinalLocation;
+	FRotator ServerFinalRotation;
 #pragma endregion Private Variables
 
 public:
@@ -130,9 +123,13 @@ private:
 	UFUNCTION(Client, Reliable)
 	void Client_OnDiceThrown();
 
-	// Client function to simulate deterministic physics
+	// Client function to start independent rolling
 	UFUNCTION(Client, Reliable)
-	void Client_SimulateDicePhysics(FVector ThrowDir, FVector AngularImp, float ThrowF, float RotationF);
+	void Client_StartIndependentRolling();
+	
+	// Client function to sync with server's final result
+	UFUNCTION(Client, Reliable)
+	void Client_SyncWithServerResult(FVector FinalLocation, FRotator FinalRotation, int32 FinalValue);
 #pragma endregion Private Function
 
 #pragma region Events Function
@@ -144,8 +141,6 @@ private:
 	UFUNCTION()
 	void OnRep_ThrowingStateChanged();
 
-	// Called when physics parameters are replicated
-	UFUNCTION()
-	void OnRep_PhysicsParametersChanged();
+
 #pragma endregion Events Function
 };

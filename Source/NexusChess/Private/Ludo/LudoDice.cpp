@@ -66,8 +66,10 @@ void ALudoDice::Tick(float deltaTime)
 		
 		if (Velocity.Size() < 0.5f && AngularVelocity.Size() < 0.5f)
 		{
-			// Dice has stopped, determine the face
+			// Dice has stopped, determine the face only once
 			DetermineDiceFace();
+			// Mark as finished to prevent further calls
+			bHasFinishedThrowing = true;
 		}
 	}
 }
@@ -81,11 +83,7 @@ void ALudoDice::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(ALudoDice, bIsThrowing);
 	DOREPLIFETIME(ALudoDice, bHasFinishedThrowing);
 	
-	// Replicate physics parameters for deterministic simulation
-	DOREPLIFETIME(ALudoDice, ReplicatedThrowDirection);
-	DOREPLIFETIME(ALudoDice, ReplicatedAngularImpulse);
-	DOREPLIFETIME(ALudoDice, ReplicatedThrowForce);
-	DOREPLIFETIME(ALudoDice, ReplicatedRotationForce);
+
 }
 #pragma endregion System Function
 
@@ -146,8 +144,15 @@ void ALudoDice::OnThrowComplete()
 		bIsThrowing = false;
 		bHasFinishedThrowing = true;
 		
+		// Store server's final position and rotation
+		ServerFinalLocation = GetActorLocation();
+		ServerFinalRotation = GetActorRotation();
+		
 		// Determine final dice face
 		DetermineDiceFace();
+		
+		// Sync final result to all clients
+		Client_SyncWithServerResult(ServerFinalLocation, ServerFinalRotation, CurrentDiceValue);
 		
 		// Notify clients
 		Client_OnThrowComplete();
@@ -223,16 +228,20 @@ void ALudoDice::DetermineDiceFace()
 		}
 	}
 
-	// Set the dice value
-	Server_SetDiceValue(NewDiceValue);
+	// Only set the dice value if it has changed
+	if (NewDiceValue != CurrentDiceValue)
+	{
+		// Set the dice value
+		Server_SetDiceValue(NewDiceValue);
 
-	// Print debug message with rotation info
-	FString DebugMessage = FString::Printf(TEXT("Dice Face: %d (Pitch=%.1f, Yaw=%.1f, Roll=%.1f)"),
-		NewDiceValue, Pitch, Yaw, Roll);
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, DebugMessage);
+		// Print debug message with rotation info
+		FString DebugMessage = FString::Printf(TEXT("Dice Face: %d (Pitch=%.1f, Yaw=%.1f, Roll=%.1f)"),
+			NewDiceValue, Pitch, Yaw, Roll);
+		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, DebugMessage);
 
-	UE_LOG(LogTemp, Warning, TEXT("Dice Face Determined: %d (Pitch=%.1f, Yaw=%.1f, Roll=%.1f)"),
-		NewDiceValue, Pitch, Yaw, Roll);
+		UE_LOG(LogTemp, Warning, TEXT("Dice Face Determined: %d (Pitch=%.1f, Yaw=%.1f, Roll=%.1f)"),
+			NewDiceValue, Pitch, Yaw, Roll);
+	}
 }
 #pragma endregion Protected Function
 
@@ -244,20 +253,18 @@ void ALudoDice::Server_ThrowDice_Implementation()
 	// Reset dice state
 	bIsThrowing = true;
 	bHasFinishedThrowing = false;
-	CurrentDiceValue = 1;
+	// Don't set CurrentDiceValue here - let it be determined when dice stops
 	
-	// Generate deterministic throw parameters
+	// Generate random throw parameters (different for each client)
 	FVector ThrowDirection = FVector(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), 1.0f);
 	ThrowDirection.Normalize();
 	
 	FVector AngularImpulse = FVector(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f));
 	AngularImpulse.Normalize();
 	
-	// Set replicated parameters for all clients
-	ReplicatedThrowDirection = ThrowDirection;
-	ReplicatedAngularImpulse = AngularImpulse;
-	ReplicatedThrowForce = ThrowForce;
-	ReplicatedRotationForce = RotationForce;
+	// Store server's final result for later sync
+	ServerFinalLocation = OriginalLocation;
+	ServerFinalRotation = OriginalRotation;
 	
 	// Reset position
 	SetActorLocation(OriginalLocation);
@@ -271,14 +278,11 @@ void ALudoDice::Server_ThrowDice_Implementation()
 	DiceMeshComponent->AddImpulse(ThrowDirection * ThrowForce, NAME_None, true);
 	DiceMeshComponent->AddAngularImpulseInDegrees(AngularImpulse * RotationForce, NAME_None, true);
 	
-	// Send physics parameters to all clients for deterministic simulation
-	Client_SimulateDicePhysics(ThrowDirection, AngularImpulse, ThrowForce, RotationForce);
+	// Notify all clients to start their own rolling (independent)
+	Client_StartIndependentRolling();
 	
 	// Set timer for throw completion
 	GetWorld()->GetTimerManager().SetTimer(ThrowTimerHandle, this, &ALudoDice::OnThrowComplete, ThrowDuration, false);
-	
-	// Notify all clients about the throw
-	Client_OnDiceThrown();
 	
 	// Print debug message
 	GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Blue, TEXT("Dice Thrown!"));
@@ -302,9 +306,9 @@ void ALudoDice::Client_OnDiceThrown_Implementation()
 	UE_LOG(LogTemp, Warning, TEXT("Client: Dice Thrown Animation"));
 }
 
-void ALudoDice::Client_SimulateDicePhysics_Implementation(FVector ThrowDir, FVector AngularImp, float ThrowF, float RotationF)
+void ALudoDice::Client_StartIndependentRolling_Implementation()
 {
-	// Only simulate on clients (not server)
+	// Only run on clients (not server)
 	if (HasAuthority()) return;
 	
 	// Reset position and physics
@@ -313,11 +317,41 @@ void ALudoDice::Client_SimulateDicePhysics_Implementation(FVector ThrowDir, FVec
 	DiceMeshComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
 	DiceMeshComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 	
-	// Apply the same forces as server for deterministic simulation
-	DiceMeshComponent->AddImpulse(ThrowDir * ThrowF, NAME_None, true);
-	DiceMeshComponent->AddAngularImpulseInDegrees(AngularImp * RotationF, NAME_None, true);
+	// Generate client's own random throw parameters
+	FVector ClientThrowDirection = FVector(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), 1.0f);
+	ClientThrowDirection.Normalize();
 	
-	UE_LOG(LogTemp, Warning, TEXT("Client: Simulating Dice Physics"));
+	FVector ClientAngularImpulse = FVector(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f));
+	ClientAngularImpulse.Normalize();
+	
+	// Apply client's own forces for smooth rolling
+	DiceMeshComponent->AddImpulse(ClientThrowDirection * ThrowForce, NAME_None, true);
+	DiceMeshComponent->AddAngularImpulseInDegrees(ClientAngularImpulse * RotationForce, NAME_None, true);
+	
+	// Client-side dice throw notification
+	GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Purple, TEXT("Dice is Rolling!"));
+	UE_LOG(LogTemp, Warning, TEXT("Client: Started Independent Rolling"));
+}
+
+void ALudoDice::Client_SyncWithServerResult_Implementation(FVector FinalLocation, FRotator FinalRotation, int32 FinalValue)
+{
+	// Only run on clients (not server)
+	if (HasAuthority()) return;
+	
+	// Smoothly transition to server's final result
+	SetActorLocation(FinalLocation);
+	SetActorRotation(FinalRotation);
+	
+	// Stop physics
+	DiceMeshComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
+	DiceMeshComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+	
+	// Update dice value
+	CurrentDiceValue = FinalValue;
+	
+	// Client-side sync completion
+	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Cyan, TEXT("Dice Synced with Server!"));
+	UE_LOG(LogTemp, Warning, TEXT("Client: Synced with Server Result - Value: %d"), FinalValue);
 }
 
 void ALudoDice::Client_OnThrowComplete_Implementation()
@@ -332,9 +366,6 @@ void ALudoDice::Client_OnThrowComplete_Implementation()
 void ALudoDice::OnRep_DiceValueChanged()
 {
 	// Called when dice value is replicated to clients
-	FString DebugMessage = FString::Printf(TEXT("Dice Value Replicated: %d"), CurrentDiceValue);
-	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, DebugMessage);
-	UE_LOG(LogTemp, Warning, TEXT("Dice Value Replicated: %d"), CurrentDiceValue);
 }
 
 void ALudoDice::OnRep_ThrowingStateChanged()
@@ -345,15 +376,5 @@ void ALudoDice::OnRep_ThrowingStateChanged()
 	UE_LOG(LogTemp, Warning, TEXT("Throwing State Changed: %s"), bIsThrowing ? TEXT("Throwing") : TEXT("Stopped"));
 }
 
-void ALudoDice::OnRep_PhysicsParametersChanged()
-{
-	// Called when physics parameters are replicated to clients
-	if (!HasAuthority() && bIsThrowing)
-	{
-		// Simulate physics on client when parameters are received
-		Client_SimulateDicePhysics(ReplicatedThrowDirection, ReplicatedAngularImpulse, ReplicatedThrowForce, ReplicatedRotationForce);
-	}
-	
-	UE_LOG(LogTemp, Warning, TEXT("Physics Parameters Replicated"));
-}
+
 #pragma endregion Events Function
