@@ -30,6 +30,19 @@ public:
 	// Has dice finished throwing and showing result
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
 	bool bHasFinishedThrowing = false;
+
+	// Deterministic physics parameters (replicated to all clients)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
+	FVector ReplicatedThrowDirection = FVector::ZeroVector;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
+	FVector ReplicatedAngularImpulse = FVector::ZeroVector;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
+	float ReplicatedThrowForce = 0.0f;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Dice")
+	float ReplicatedRotationForce = 0.0f;
 #pragma endregion Public Variables
 
 protected:
@@ -83,6 +96,10 @@ public:
 	// Check if dice has finished throwing
 	UFUNCTION(BlueprintCallable, Category = "Dice")
 	bool IsDiceFinished() const { return bHasFinishedThrowing; }
+
+	// Debug function to show current dice rotation
+	UFUNCTION(BlueprintCallable, Category = "Dice")
+	void ShowCurrentRotation();
 #pragma endregion Public Function
 
 protected:
@@ -112,6 +129,10 @@ private:
 	// Client function to handle dice thrown animation
 	UFUNCTION(Client, Reliable)
 	void Client_OnDiceThrown();
+
+	// Client function to simulate deterministic physics
+	UFUNCTION(Client, Reliable)
+	void Client_SimulateDicePhysics(FVector ThrowDir, FVector AngularImp, float ThrowF, float RotationF);
 #pragma endregion Private Function
 
 #pragma region Events Function
@@ -122,5 +143,9 @@ private:
 	// Called when throwing state changes
 	UFUNCTION()
 	void OnRep_ThrowingStateChanged();
+
+	// Called when physics parameters are replicated
+	UFUNCTION()
+	void OnRep_PhysicsParametersChanged();
 #pragma endregion Events Function
 };

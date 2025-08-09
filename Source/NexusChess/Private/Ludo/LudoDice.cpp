@@ -64,7 +64,7 @@ void ALudoDice::Tick(float deltaTime)
 		FVector Velocity = DiceMeshComponent->GetPhysicsLinearVelocity();
 		FVector AngularVelocity = DiceMeshComponent->GetPhysicsAngularVelocityInDegrees();
 		
-		if (Velocity.Size() < 10.0f && AngularVelocity.Size() < 10.0f)
+		if (Velocity.Size() < 0.5f && AngularVelocity.Size() < 0.5f)
 		{
 			// Dice has stopped, determine the face
 			DetermineDiceFace();
@@ -80,6 +80,12 @@ void ALudoDice::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(ALudoDice, CurrentDiceValue);
 	DOREPLIFETIME(ALudoDice, bIsThrowing);
 	DOREPLIFETIME(ALudoDice, bHasFinishedThrowing);
+	
+	// Replicate physics parameters for deterministic simulation
+	DOREPLIFETIME(ALudoDice, ReplicatedThrowDirection);
+	DOREPLIFETIME(ALudoDice, ReplicatedAngularImpulse);
+	DOREPLIFETIME(ALudoDice, ReplicatedThrowForce);
+	DOREPLIFETIME(ALudoDice, ReplicatedRotationForce);
 }
 #pragma endregion System Function
 
@@ -120,6 +126,16 @@ void ALudoDice::ResetDice()
 		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow, TEXT("Dice Reset!"));
 	}
 }
+
+void ALudoDice::ShowCurrentRotation()
+{
+	FRotator CurrentRotation = GetActorRotation();
+	FString RotationMessage = FString::Printf(TEXT("Dice Rotation: Pitch=%.1f, Yaw=%.1f, Roll=%.1f"), 
+		CurrentRotation.Pitch, CurrentRotation.Yaw, CurrentRotation.Roll);
+	
+	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange, RotationMessage);
+	UE_LOG(LogTemp, Warning, TEXT("Current Dice Rotation: %s"), *RotationMessage);
+}
 #pragma endregion Public Function
 
 #pragma region Protected Function
@@ -137,63 +153,86 @@ void ALudoDice::OnThrowComplete()
 		Client_OnThrowComplete();
 	}
 }
-
 void ALudoDice::DetermineDiceFace()
 {
 	if (!HasAuthority()) return;
 
 	// Get the current rotation of the dice
 	FRotator DiceRotation = GetActorRotation();
-	
-	// Convert to degrees for easier calculation
+
+	// Normalize rotation to 0-360 degrees
 	float Pitch = FMath::Fmod(DiceRotation.Pitch + 360.0f, 360.0f);
-	float Roll = FMath::Fmod(DiceRotation.Roll + 360.0f, 360.0f);
 	float Yaw = FMath::Fmod(DiceRotation.Yaw + 360.0f, 360.0f);
-	
-	// Determine which face is up based on rotation
-	// This is a simplified calculation - you may need to adjust based on your dice model
-	int32 NewDiceValue = 1;
-	
-	// Simple face determination based on pitch (forward/backward tilt)
-	if (Pitch > 315.0f || Pitch <= 45.0f)
+	float Roll = FMath::Fmod(DiceRotation.Roll + 360.0f, 360.0f);
+
+	// Tolerance for angle detection (based on your data)
+	const float Tolerance = 5.0f; // 5 degrees tolerance
+
+	int32 NewDiceValue = 6; // Default face
+
+	// Face detection based on your actual data patterns
+	// Check Roll first since it's more distinctive in your data
+	if (FMath::Abs(Roll - 90.0f) <= Tolerance)
 	{
-		NewDiceValue = 1; // Face 1 up
+		// Face 4: Roll=90° (your data shows this clearly)
+		NewDiceValue = 4;
 	}
-	else if (Pitch > 45.0f && Pitch <= 135.0f)
+	else if (FMath::Abs(Roll - 270.0f) <= Tolerance || FMath::Abs(Roll - (-90.0f)) <= Tolerance)
 	{
-		NewDiceValue = 2; // Face 2 up
+		// Face 3: Roll=270° or -90°
+		NewDiceValue = 3;
 	}
-	else if (Pitch > 135.0f && Pitch <= 225.0f)
+	else if (FMath::Abs(Roll - 180.0f) <= Tolerance || FMath::Abs(Roll - (-180.0f)) <= Tolerance)
 	{
-		NewDiceValue = 3; // Face 3 up
+		// Face 1: Roll=180° or -180°
+		NewDiceValue = 1;
 	}
-	else if (Pitch > 225.0f && Pitch <= 315.0f)
+	else if (FMath::Abs(Pitch - 90.0f) <= Tolerance)
 	{
-		NewDiceValue = 4; // Face 4 up
+		// Face 5: Pitch=90°
+		NewDiceValue = 5;
 	}
-	
-	// Adjust based on Yaw (left/right rotation) for more faces
-	if (Yaw > 45.0f && Yaw <= 135.0f)
+	else if (FMath::Abs(Pitch - 270.0f) <= Tolerance || FMath::Abs(Pitch - (-90.0f)) <= Tolerance)
 	{
-		NewDiceValue = (NewDiceValue % 6) + 1;
+		// Face 2: Pitch=270° or -90°
+		NewDiceValue = 2;
 	}
-	else if (Yaw > 135.0f && Yaw <= 225.0f)
+	else if (FMath::Abs(Pitch) <= Tolerance && FMath::Abs(Roll) <= Tolerance)
 	{
-		NewDiceValue = ((NewDiceValue + 2) % 6) + 1;
+		// Face 6: Pitch=0°, Roll=0° (default)
+		NewDiceValue = 6;
 	}
-	else if (Yaw > 225.0f && Yaw <= 315.0f)
+	else
 	{
-		NewDiceValue = ((NewDiceValue + 3) % 6) + 1;
+		// Fallback: determine based on dominant rotation
+		if (Pitch > 45.0f && Pitch <= 135.0f)
+		{
+			NewDiceValue = 5; // Face 5 up
+		}
+		else if (Pitch > 135.0f && Pitch <= 225.0f)
+		{
+			NewDiceValue = 1; // Face 1 up (opposite)
+		}
+		else if (Pitch > 225.0f && Pitch <= 315.0f)
+		{
+			NewDiceValue = 2; // Face 2 up
+		}
+		else
+		{
+			NewDiceValue = 6; // Default face 6
+		}
 	}
-	
+
 	// Set the dice value
 	Server_SetDiceValue(NewDiceValue);
-	
-	// Print debug message
-	FString DebugMessage = FString::Printf(TEXT("Dice Thrown! Face Value: %d"), NewDiceValue);
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, DebugMessage);
-	
-	UE_LOG(LogTemp, Warning, TEXT("Dice Face Determined: %d"), NewDiceValue);
+
+	// Print debug message with rotation info
+	FString DebugMessage = FString::Printf(TEXT("Dice Face: %d (Pitch=%.1f, Yaw=%.1f, Roll=%.1f)"),
+		NewDiceValue, Pitch, Yaw, Roll);
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, DebugMessage);
+
+	UE_LOG(LogTemp, Warning, TEXT("Dice Face Determined: %d (Pitch=%.1f, Yaw=%.1f, Roll=%.1f)"),
+		NewDiceValue, Pitch, Yaw, Roll);
 }
 #pragma endregion Protected Function
 
@@ -207,6 +246,19 @@ void ALudoDice::Server_ThrowDice_Implementation()
 	bHasFinishedThrowing = false;
 	CurrentDiceValue = 1;
 	
+	// Generate deterministic throw parameters
+	FVector ThrowDirection = FVector(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), 1.0f);
+	ThrowDirection.Normalize();
+	
+	FVector AngularImpulse = FVector(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f));
+	AngularImpulse.Normalize();
+	
+	// Set replicated parameters for all clients
+	ReplicatedThrowDirection = ThrowDirection;
+	ReplicatedAngularImpulse = AngularImpulse;
+	ReplicatedThrowForce = ThrowForce;
+	ReplicatedRotationForce = RotationForce;
+	
 	// Reset position
 	SetActorLocation(OriginalLocation);
 	SetActorRotation(OriginalRotation);
@@ -215,17 +267,12 @@ void ALudoDice::Server_ThrowDice_Implementation()
 	DiceMeshComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
 	DiceMeshComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 	
-	// Apply random force for throwing
-	FVector ThrowDirection = FVector(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), 1.0f);
-	ThrowDirection.Normalize();
-	
-	// Apply linear force
+	// Apply forces on server
 	DiceMeshComponent->AddImpulse(ThrowDirection * ThrowForce, NAME_None, true);
-	
-	// Apply angular force for spinning
-	FVector AngularImpulse = FVector(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f));
-	AngularImpulse.Normalize();
 	DiceMeshComponent->AddAngularImpulseInDegrees(AngularImpulse * RotationForce, NAME_None, true);
+	
+	// Send physics parameters to all clients for deterministic simulation
+	Client_SimulateDicePhysics(ThrowDirection, AngularImpulse, ThrowForce, RotationForce);
 	
 	// Set timer for throw completion
 	GetWorld()->GetTimerManager().SetTimer(ThrowTimerHandle, this, &ALudoDice::OnThrowComplete, ThrowDuration, false);
@@ -255,6 +302,24 @@ void ALudoDice::Client_OnDiceThrown_Implementation()
 	UE_LOG(LogTemp, Warning, TEXT("Client: Dice Thrown Animation"));
 }
 
+void ALudoDice::Client_SimulateDicePhysics_Implementation(FVector ThrowDir, FVector AngularImp, float ThrowF, float RotationF)
+{
+	// Only simulate on clients (not server)
+	if (HasAuthority()) return;
+	
+	// Reset position and physics
+	SetActorLocation(OriginalLocation);
+	SetActorRotation(OriginalRotation);
+	DiceMeshComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
+	DiceMeshComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+	
+	// Apply the same forces as server for deterministic simulation
+	DiceMeshComponent->AddImpulse(ThrowDir * ThrowF, NAME_None, true);
+	DiceMeshComponent->AddAngularImpulseInDegrees(AngularImp * RotationF, NAME_None, true);
+	
+	UE_LOG(LogTemp, Warning, TEXT("Client: Simulating Dice Physics"));
+}
+
 void ALudoDice::Client_OnThrowComplete_Implementation()
 {
 	// Client-side throw completion
@@ -278,5 +343,17 @@ void ALudoDice::OnRep_ThrowingStateChanged()
 	FString StateMessage = bIsThrowing ? TEXT("Dice is Throwing...") : TEXT("Dice Stopped Throwing");
 	GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::White, StateMessage);
 	UE_LOG(LogTemp, Warning, TEXT("Throwing State Changed: %s"), bIsThrowing ? TEXT("Throwing") : TEXT("Stopped"));
+}
+
+void ALudoDice::OnRep_PhysicsParametersChanged()
+{
+	// Called when physics parameters are replicated to clients
+	if (!HasAuthority() && bIsThrowing)
+	{
+		// Simulate physics on client when parameters are received
+		Client_SimulateDicePhysics(ReplicatedThrowDirection, ReplicatedAngularImpulse, ReplicatedThrowForce, ReplicatedRotationForce);
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("Physics Parameters Replicated"));
 }
 #pragma endregion Events Function
