@@ -90,20 +90,20 @@ void ANexusPawn::IE_MoveForwardBackward(float value)
 	if (value > 0.0f && this->_currentSpeedValue != 1.0f)
 	{
 		if (this->_currentSpeedValue <= 0.8f)
-			this->_currentSpeedValue = FMath::FInterpTo(this->_currentSpeedValue, 1.0f, GetWorld()->GetDeltaSeconds(), 2.50f);
+			this->_currentSpeedValue = FMath::FInterpTo(this->_currentSpeedValue, 1.0f, GetWorld()->GetDeltaSeconds(), 15.0f);
 		else
 			this->_currentSpeedValue = 1;
 	}
 	if (value < 0.0f && this->_currentSpeedValue != 1.0f)
 	{
 		if (this->_currentSpeedValue >= -0.8f)
-			this->_currentSpeedValue = FMath::FInterpTo(this->_currentSpeedValue, -1.0f, GetWorld()->GetDeltaSeconds(), 2.50f);
+			this->_currentSpeedValue = FMath::FInterpTo(this->_currentSpeedValue, -1.0f, GetWorld()->GetDeltaSeconds(), 15.0f);
 		else this->_currentSpeedValue = -1;
 	}
 	else if (value == 0.0f && this->_currentSpeedValue != 0.0f)
 	{
 		if (this->_currentSpeedValue > 0.2f)
-			this->_currentSpeedValue = FMath::FInterpTo(this->_currentSpeedValue, 0.0f, GetWorld()->GetDeltaSeconds(), 2.5f);
+			this->_currentSpeedValue = FMath::FInterpTo(this->_currentSpeedValue, 0.0f, GetWorld()->GetDeltaSeconds(), 15.0f);
 		else this->_currentSpeedValue = 0;
 	}
 	else if (this->_currentSpeedValue == 0.0f) return;
@@ -119,21 +119,21 @@ void ANexusPawn::IE_MoveRightLeft(float value)
 	if (value > 0.0f && this->_currentDirectionValue != 1.0f)
 	{
 		if (this->_currentDirectionValue <= 0.8f)
-			this->_currentDirectionValue = FMath::FInterpTo(this->_currentDirectionValue, 1.0f, GetWorld()->GetDeltaSeconds(), 2.50f);
+			this->_currentDirectionValue = FMath::FInterpTo(this->_currentDirectionValue, 1.0f, GetWorld()->GetDeltaSeconds(), 15.0f);
 		else
 			this->_currentDirectionValue = 1;
 	}
 	if (value < 0.0f && this->_currentDirectionValue != 1.0f)
 	{
 		if (this->_currentDirectionValue >= -0.8f)
-			this->_currentDirectionValue = FMath::FInterpTo(this->_currentDirectionValue, -1.0f, GetWorld()->GetDeltaSeconds(), 2.50f);
+			this->_currentDirectionValue = FMath::FInterpTo(this->_currentDirectionValue, -1.0f, GetWorld()->GetDeltaSeconds(), 15.0f);
 		else
 			this->_currentDirectionValue = -1;
 	}
 	else if (value == 0.0f && this->_currentDirectionValue != 0.0f)
 	{
 		if (this->_currentDirectionValue > 0.2f)
-			this->_currentDirectionValue = FMath::FInterpTo(this->_currentDirectionValue, 0.0f, GetWorld()->GetDeltaSeconds(), 2.5f);
+			this->_currentDirectionValue = FMath::FInterpTo(this->_currentDirectionValue, 0.0f, GetWorld()->GetDeltaSeconds(), 15.0f);
 		else
 			this->_currentDirectionValue = 0;
 	}
@@ -161,8 +161,8 @@ void ANexusPawn::IE_TragetArmLength(float value)
 {
 	if (!APawn::Controller || (this->_currentTargetArmValue == 0.0f && value == 0.0f)) return;
 
-	this->_currentTargetArmValue = FMath::FInterpTo(this->_currentTargetArmValue, value, GetWorld()->GetDeltaSeconds(), 2.50f);
-	float targetArm = this->_cameraBoom->TargetArmLength += (_currentTargetArmValue * -15.0f);
+	this->_currentTargetArmValue = FMath::FInterpTo(this->_currentTargetArmValue, value, GetWorld()->GetDeltaSeconds(), 20.0f);
+	float targetArm = this->_cameraBoom->TargetArmLength += (_currentTargetArmValue * -7.5f); // Reduced from -15.0f to -7.5f (50% less)
 
 	if (targetArm > 3000.0f) targetArm = 3000.0f;
 	else if (targetArm < 200.0f) targetArm = 200.0f;
@@ -173,8 +173,8 @@ void ANexusPawn::IE_CameraFOV(float value)
 {
 	if (!APawn::Controller || (this->_currentCameraFOV == 0.0f && value == 0.0f)) return;
 
-	this->_currentCameraFOV = FMath::FInterpTo(this->_currentCameraFOV, value, GetWorld()->GetDeltaSeconds(), 1.50f);
-	float fov = this->_characterCamera->FieldOfView += (_currentCameraFOV * -1.0f);
+	this->_currentCameraFOV = FMath::FInterpTo(this->_currentCameraFOV, value, GetWorld()->GetDeltaSeconds(), 18.0f);
+	float fov = this->_characterCamera->FieldOfView += (_currentCameraFOV * -0.5f); // Reduced from -1.0f to -0.5f (50% less)
 	
 	if (fov > 120.0f) fov = 120.0f;
 	else if (fov < 30.0f) fov = 30.0f;
