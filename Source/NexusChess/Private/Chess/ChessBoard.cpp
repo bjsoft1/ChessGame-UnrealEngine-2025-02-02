@@ -6,22 +6,22 @@
 AChessBoard::AChessBoard(const FObjectInitializer& objectInitializer) : Super(objectInitializer)
 {
     PrimaryActorTick.bCanEverTick = true;
-    ConstructorHelpers::FObjectFinder<UStaticMesh> meshAsset(TEXT("/Engine/BasicShapes/Plane"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> meshAsset(TEXT("/Engine/BasicShapes/Plane"));
 
     this->_chessBoardMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("ChessBoardMeshComponent");
     AActor::RootComponent = this->_chessBoardMeshComponent;
     this->_chessBoardMeshComponent->SetStaticMesh(meshAsset.Object);
     this->_chessBoardMeshComponent->SetRelativeScale3D(FVector(6.5f, 6.5f, 1.0f));
 
-    ConstructorHelpers::FObjectFinder<UStaticMesh> piecePawn(TEXT("/Game/ChessGame/Static-Mesh/SM_Pawn"));
-    ConstructorHelpers::FObjectFinder<UStaticMesh> pieceRook(TEXT("/Game/ChessGame/Static-Mesh/SM_Rook"));
-    ConstructorHelpers::FObjectFinder<UStaticMesh> pieceKnight(TEXT("/Game/ChessGame/Static-Mesh/SM_Knight"));
-    ConstructorHelpers::FObjectFinder<UStaticMesh> pieceBishop(TEXT("/Game/ChessGame/Static-Mesh/SM_Bishop"));
-    ConstructorHelpers::FObjectFinder<UStaticMesh> pieceQueen(TEXT("/Game/ChessGame/Static-Mesh/SM_Queen"));
-    ConstructorHelpers::FObjectFinder<UStaticMesh> pieceKing(TEXT("/Game/ChessGame/Static-Mesh/SM_King"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> piecePawn(TEXT("/Game/ChessGame/Static-Mesh/SM_Pawn"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> pieceRook(TEXT("/Game/ChessGame/Static-Mesh/SM_Rook"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> pieceKnight(TEXT("/Game/ChessGame/Static-Mesh/SM_Knight"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> pieceBishop(TEXT("/Game/ChessGame/Static-Mesh/SM_Bishop"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> pieceQueen(TEXT("/Game/ChessGame/Static-Mesh/SM_Queen"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> pieceKing(TEXT("/Game/ChessGame/Static-Mesh/SM_King"));
 
-    ConstructorHelpers::FObjectFinder<UMaterial> black(TEXT("/Game/ChessGame/Materials/M_Black"));
-    ConstructorHelpers::FObjectFinder<UMaterial> white(TEXT("/Game/ChessGame/Materials/M_White"));
+    static ConstructorHelpers::FObjectFinder<UMaterial> black(TEXT("/Game/ChessGame/Materials/M_Black"));
+    static ConstructorHelpers::FObjectFinder<UMaterial> white(TEXT("/Game/ChessGame/Materials/M_White"));
 
     //----------------------------
     this->_piecePawn = piecePawn.Object;
